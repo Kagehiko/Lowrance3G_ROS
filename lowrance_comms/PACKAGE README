@@ -1,0 +1,111 @@
+This package was created for ROS Kinectic.
+
+It contains the following nodes:
+
+1) lowrance_comms_interface
+
+
+Node description:
+
+
+*************************** lowrance_comms_interface ****************************
+
+Communicates with the lowrance 3G radar. It uses the ASIO library for networking.
+The standalone version of ASIO was used, so Boost is not necessary.
+
+The node stores radar configurations on the ROS Parameter Server. If no arguments
+are passed via command line, it will try to load these values from the ROS
+Parameter Server. If the values are not found, a ROS Warning will show up telling
+the user that the node will use default values, and the default values will be
+loaded to the ROS Paremeter Server.
+
+If the IP of the local networking card was not provided via command line and does
+not exist on the ROS Parameter Server, the node will throw a ROS_ERROR and will
+not run.
+
+The raw data of the radar is published on the topic "lowrance_data". The raw data
+is in big endian (MSBs come first) and has the following format:
+8 bytes for timestamp seconds
+2 bytes for timestamp milliseconds
+2 bytes for scanline angle (0-4096 = 0-360º)
+2 bytes for the scan radius (in meters)
+N bytes for scanline data
+
+Scanline data is sent as 512 bytes via ethernet (corresponding to 512 echoes), but
+since most echos are zero, the published raw data tries to ommit all zeroes by
+doing this:
+If echoes are detected, a 0x00 is sent to indicate data start, then 2 bytes for
+the first echo's index are sent. Then, a byte for each echo received is sent.
+
+The following is an example of the scanline data bytes.
+
+Echoes received
+{0x00, 0x00, 0x1A, 0x00, 0x00, 0xFA, 0xEA, 0x00 , 0x00 [...]}
+
+Scanline data published
+{ 0x00,  0x00, 0x02,     0x1A,    0x00,  0x00, 0x05,   0xFA,      0xEA}
+ [Start] [ Index=2 ]  [Echo nº2] [Start] [ Index=5 ] [Echo nº5] [Echo nº6]
+
+Usage:
+source catkin_workspace/devel/setup.bash
+rosrun lowrance_comms lowrance_comms_interface [optional arguments]
+
+List of (optional) arguments:
+
+-i xxx.xxx.xxx.xxx
+Choose the local IPv4 of the networking card where the radar is connected.
+Default: None, node will not run if not provided with an IP via command
+line or ROS Parameter Server.
+Example: -i 10.42.0.1
+
+-r x
+Select range of the radar. Valid ranges: [50;24000] meters
+Default: 6000
+Example: -r 16000
+
+-t x
+Selects interference rejection value. 0 means off, 1 low, 2 medium,
+3 high.
+Default: 0 (off)
+Example: -t 2
+
+-b x
+Selects target boost value. 0 means off, 1 low, 2 high.
+Default: 0 (off)
+Example: -b 0
+
+-l x
+Selects local interference filter value. 0 means off, 1 low, 2 medium,
+3 high.
+Default: 0 (off)
+Example: -l 3
+
+-s x
+Selects scan speed. 0 means normal, 1 means fast
+Default: 0 (normal)
+Example: -s 1
+
+-a x
+Selects auto gain or manual gain. 0 means manual, 1 means auto.
+Note that the value on the Parameter Server is a boolean.
+Default: 1 (true)
+Example: -a 0
+
+-g x
+Selects manual gain value. Only works if gain is set to manual.
+Valid gain values: [0;255]
+Default: 128
+Example: -g 255
+
+-f x
+Selects rain filter value. Valid ranges: [1;80]
+Default: 77
+Example: -r 50
+
+-e x
+Selects auto or manual sea clutter filter. 0 means manual, 1 means auto.
+Note that the value on the Parameter Server is a boolean
+Default: true (auto)
+Example: -e 0
+
+*********************************************************************************
